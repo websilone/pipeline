@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pipeline · Options de design</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Public+Sans:wght@400;500;600&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  body { margin: 0; background: #f4f4f5; color: #18181b; font: 15px/1.5 system-ui, sans-serif; }
+  .page-head { max-width: 1440px; margin: 0 auto; padding: 32px 16px 8px; }
+  .page-head h1 { margin: 0 0 4px; font-size: 22px; }
+  .page-head p { margin: 0; color: #52525b; }
+  .grid { max-width: 1440px; margin: 0 auto; padding: 16px; display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 400px), 1fr)); align-items: start; }
+
+  /* ---------- Shared component structure, skinned by each system's tokens ---------- */
+  .ds { background: var(--background); color: var(--foreground); font-family: var(--font-sans); border-radius: 12px; padding: 24px; box-shadow: 0 1px 3px rgb(0 0 0 / .08); }
+  .ds h2.ds-name { font-family: var(--font-heading); font-weight: var(--heading-weight); font-size: 28px; line-height: 1.1; margin: 0; letter-spacing: var(--heading-tracking); }
+  .ds .ds-intent { color: var(--muted-foreground); margin: 6px 0 0; font-size: 14px; }
+  .ds section { margin-top: 28px; }
+  .ds h3.section-title { font-family: var(--font-mono); font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: .08em; color: var(--muted-foreground); margin: 0 0 12px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+
+  .swatches { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .swatch { font-size: 11px; line-height: 1.3; }
+  .swatch i { display: block; height: 40px; border-radius: calc(var(--radius) * .6); border: 1px solid var(--border); margin-bottom: 4px; }
+  .swatch b { display: block; font-weight: 600; }
+  .swatch span { color: var(--muted-foreground); font-family: var(--font-mono); font-size: 10px; }
+  .stages { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+
+  .type-row { display: flex; align-items: baseline; gap: 12px; margin: 6px 0; }
+  .type-row small { flex: 0 0 64px; font-family: var(--font-mono); font-size: 10px; color: var(--muted-foreground); }
+  .t-h1 { font-family: var(--font-heading); font-weight: var(--heading-weight); font-size: 30px; line-height: 1.15; letter-spacing: var(--heading-tracking); }
+  .t-h2 { font-family: var(--font-heading); font-weight: var(--heading-weight); font-size: 20px; line-height: 1.25; letter-spacing: var(--heading-tracking); }
+  .t-body { font-size: 15px; }
+  .t-small { font-size: 13px; color: var(--muted-foreground); }
+  .t-mono { font-family: var(--font-mono); font-size: 13px; }
+  .font-note { font-size: 12px; color: var(--muted-foreground); margin-top: 8px; }
+
+  .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .row + .row { margin-top: 10px; }
+  .btn { font: inherit; font-size: 14px; font-weight: 500; height: 36px; padding: 0 14px; border-radius: var(--btn-radius); border: 1px solid transparent; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: background .15s, box-shadow .15s; }
+  .btn svg { width: 16px; height: 16px; }
+  .btn-sm { height: 30px; padding: 0 10px; font-size: 13px; }
+  .btn-primary { background: var(--primary); color: var(--primary-foreground); box-shadow: var(--btn-shadow); }
+  .btn-primary:hover { background: var(--primary-hover); }
+  .btn-secondary { background: var(--secondary); color: var(--secondary-foreground); }
+  .btn-outline { background: var(--card); color: var(--foreground); border-color: var(--input); }
+  .btn-outline:hover, .btn-ghost:hover { background: var(--accent); }
+  .btn-ghost { background: transparent; color: var(--foreground); }
+  .btn-destructive { background: var(--destructive-soft); color: var(--destructive); }
+  .btn[disabled] { opacity: .5; cursor: not-allowed; }
+  .btn-icon { width: 36px; padding: 0; justify-content: center; }
+
+  .fields { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .fields .full { grid-column: 1 / -1; }
+  .field label { display: block; font-size: 13px; font-weight: 500; margin-bottom: 6px; }
+  .input { width: 100%; font: inherit; font-size: 14px; height: 38px; padding: 0 12px; color: var(--foreground); background: var(--input-bg); border: 1px solid var(--input); border-radius: var(--field-radius); outline: none; }
+  textarea.input { height: 76px; padding: 8px 12px; resize: vertical; }
+  .input::placeholder { color: var(--muted-foreground); }
+  .input:focus, .input.is-focus { border-color: var(--ring); box-shadow: 0 0 0 3px var(--ring-soft); }
+  .input.is-error { border-color: var(--destructive); box-shadow: 0 0 0 3px var(--destructive-soft); }
+  .hint { font-size: 12px; margin-top: 4px; color: var(--muted-foreground); }
+  .hint.err { color: var(--destructive); }
+  select.input { appearance: none; background-image: linear-gradient(45deg, transparent 50%, currentColor 50%), linear-gradient(135deg, currentColor 50%, transparent 50%); background-position: calc(100% - 17px) 16px, calc(100% - 12px) 16px; background-size: 5px 5px; background-repeat: no-repeat; }
+
+  .badge { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 500; line-height: 1; padding: 5px 9px; border-radius: var(--badge-radius); background: var(--s-bg); color: var(--s-fg); }
+  .badge::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--s-dot); }
+  .s-todo { --s-bg: var(--stage-todo-bg); --s-fg: var(--stage-todo-fg); --s-dot: var(--stage-todo); }
+  .s-contacted { --s-bg: var(--stage-contacted-bg); --s-fg: var(--stage-contacted-fg); --s-dot: var(--stage-contacted); }
+  .s-talking { --s-bg: var(--stage-talking-bg); --s-fg: var(--stage-talking-fg); --s-dot: var(--stage-talking); }
+  .s-won { --s-bg: var(--stage-won-bg); --s-fg: var(--stage-won-fg); --s-dot: var(--stage-won); }
+  .s-lost { --s-bg: var(--stage-lost-bg); --s-fg: var(--stage-lost-fg); --s-dot: var(--stage-lost); }
+
+  .cards { display: grid; gap: 12px; }
+  .card { background: var(--card); color: var(--card-foreground); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; box-shadow: var(--card-shadow); }
+  .card.overdue { border-color: var(--overdue-border); box-shadow: var(--card-shadow), inset 3px 0 0 var(--overdue); }
+  .card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+  .card-name { font-family: var(--font-heading); font-weight: var(--heading-weight); font-size: 17px; line-height: 1.25; margin: 0; letter-spacing: var(--heading-tracking); }
+  .card-company { font-size: 13px; color: var(--muted-foreground); margin-top: 2px; }
+  .card-email { font-family: var(--font-mono); font-size: 12.5px; color: var(--foreground); margin-top: 10px; display: flex; align-items: center; gap: 6px; }
+  .card-email svg, .card-date svg { width: 14px; height: 14px; color: var(--muted-foreground); flex: none; }
+  .card-notes { font-size: 13.5px; color: var(--muted-foreground); margin: 10px 0 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .card-foot { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border); }
+  .card-date { display: flex; align-items: center; gap: 6px; font-size: 13px; font-family: var(--font-mono); }
+  .card.overdue .card-date { color: var(--overdue); font-weight: 500; }
+  .card.overdue .card-date svg { color: var(--overdue); }
+
+  /* ---------- A · Ardoise : sober SaaS, cool neutrals, indigo accent ---------- */
+  .ds-a {
+    --font-sans: "Geist", system-ui, sans-serif; --font-heading: var(--font-sans); --font-mono: "Geist Mono", ui-monospace, monospace;
+    --heading-weight: 600; --heading-tracking: -0.02em;
+    --radius: 10px; --btn-radius: 8px; --field-radius: 8px; --badge-radius: 999px;
+    --background: oklch(0.985 0.002 265); --foreground: oklch(0.21 0.02 265);
+    --card: oklch(1 0 0); --card-foreground: oklch(0.21 0.02 265);
+    --primary: oklch(0.51 0.2 268); --primary-hover: oklch(0.46 0.2 268); --primary-foreground: oklch(0.985 0 0);
+    --secondary: oklch(0.95 0.012 268); --secondary-foreground: oklch(0.35 0.12 268);
+    --muted-foreground: oklch(0.55 0.02 265); --accent: oklch(0.96 0.006 265);
+    --border: oklch(0.92 0.008 265); --input: oklch(0.88 0.01 265); --input-bg: oklch(1 0 0);
+    --ring: oklch(0.51 0.2 268); --ring-soft: oklch(0.51 0.2 268 / 18%);
+    --destructive: oklch(0.577 0.215 27); --destructive-soft: oklch(0.577 0.215 27 / 10%);
+    --overdue: oklch(0.6 0.19 40); --overdue-border: oklch(0.85 0.08 50);
+    --card-shadow: 0 1px 2px oklch(0.21 0.02 265 / 6%); --btn-shadow: 0 1px 2px oklch(0.21 0.02 265 / 15%);
+    --stage-todo: oklch(0.6 0.02 265); --stage-todo-bg: oklch(0.95 0.006 265); --stage-todo-fg: oklch(0.4 0.02 265);
+    --stage-contacted: oklch(0.6 0.15 245); --stage-contacted-bg: oklch(0.95 0.03 245); --stage-contacted-fg: oklch(0.42 0.13 250);
+    --stage-talking: oklch(0.72 0.16 75); --stage-talking-bg: oklch(0.96 0.05 85); --stage-talking-fg: oklch(0.47 0.11 60);
+    --stage-won: oklch(0.63 0.15 155); --stage-won-bg: oklch(0.95 0.04 155); --stage-won-fg: oklch(0.42 0.11 155);
+    --stage-lost: oklch(0.6 0.19 25); --stage-lost-bg: oklch(0.95 0.025 25); --stage-lost-fg: oklch(0.47 0.16 25);
+  }
+
+  /* ---------- B · Papier : warm editorial, cream paper, terracotta accent ---------- */
+  .ds-b {
+    --font-sans: "Public Sans", system-ui, sans-serif; --font-heading: "Fraunces", Georgia, serif; --font-mono: "Geist Mono", ui-monospace, monospace;
+    --heading-weight: 600; --heading-tracking: -0.01em;
+    --radius: 6px; --btn-radius: 4px; --field-radius: 4px; --badge-radius: 3px;
+    --background: oklch(0.972 0.012 85); --foreground: oklch(0.25 0.02 55);
+    --card: oklch(0.993 0.005 85); --card-foreground: oklch(0.25 0.02 55);
+    --primary: oklch(0.56 0.14 40); --primary-hover: oklch(0.5 0.14 40); --primary-foreground: oklch(0.985 0.01 85);
+    --secondary: oklch(0.92 0.025 75); --secondary-foreground: oklch(0.3 0.03 55);
+    --muted-foreground: oklch(0.52 0.03 60); --accent: oklch(0.94 0.02 80);
+    --border: oklch(0.88 0.022 75); --input: oklch(0.82 0.03 70); --input-bg: oklch(0.993 0.005 85);
+    --ring: oklch(0.56 0.14 40); --ring-soft: oklch(0.56 0.14 40 / 18%);
+    --destructive: oklch(0.52 0.18 25); --destructive-soft: oklch(0.52 0.18 25 / 10%);
+    --overdue: oklch(0.56 0.14 40); --overdue-border: oklch(0.8 0.07 45);
+    --card-shadow: 0 1px 0 oklch(0.25 0.02 55 / 6%); --btn-shadow: none;
+    --stage-todo: oklch(0.6 0.03 70); --stage-todo-bg: oklch(0.93 0.018 75); --stage-todo-fg: oklch(0.4 0.03 60);
+    --stage-contacted: oklch(0.55 0.06 240); --stage-contacted-bg: oklch(0.93 0.02 230); --stage-contacted-fg: oklch(0.38 0.06 240);
+    --stage-talking: oklch(0.68 0.13 75); --stage-talking-bg: oklch(0.93 0.05 85); --stage-talking-fg: oklch(0.45 0.1 65);
+    --stage-won: oklch(0.58 0.08 145); --stage-won-bg: oklch(0.93 0.035 140); --stage-won-fg: oklch(0.4 0.07 145);
+    --stage-lost: oklch(0.52 0.15 25); --stage-lost-bg: oklch(0.93 0.03 30); --stage-lost-fg: oklch(0.45 0.13 25);
+  }
+
+  /* ---------- C · Nuit : dark, dense, lime signal ---------- */
+  .ds-c {
+    --font-sans: "Space Grotesk", system-ui, sans-serif; --font-heading: var(--font-sans); --font-mono: "JetBrains Mono", ui-monospace, monospace;
+    --heading-weight: 600; --heading-tracking: -0.025em;
+    --radius: 14px; --btn-radius: 999px; --field-radius: 10px; --badge-radius: 999px;
+    --background: oklch(0.17 0.012 265); --foreground: oklch(0.95 0.005 265);
+    --card: oklch(0.215 0.014 265); --card-foreground: oklch(0.95 0.005 265);
+    --primary: oklch(0.88 0.19 125); --primary-hover: oklch(0.93 0.19 125); --primary-foreground: oklch(0.2 0.04 130);
+    --secondary: oklch(0.28 0.015 265); --secondary-foreground: oklch(0.95 0.005 265);
+    --muted-foreground: oklch(0.68 0.015 265); --accent: oklch(0.27 0.015 265);
+    --border: oklch(1 0 0 / 9%); --input: oklch(1 0 0 / 14%); --input-bg: oklch(0.19 0.012 265);
+    --ring: oklch(0.88 0.19 125); --ring-soft: oklch(0.88 0.19 125 / 20%);
+    --destructive: oklch(0.7 0.19 22); --destructive-soft: oklch(0.7 0.19 22 / 14%);
+    --overdue: oklch(0.78 0.16 60); --overdue-border: oklch(0.78 0.16 60 / 35%);
+    --card-shadow: 0 1px 0 oklch(1 0 0 / 4%) inset; --btn-shadow: 0 0 0 1px oklch(0.88 0.19 125 / 30%), 0 4px 14px oklch(0.88 0.19 125 / 18%);
+    --stage-todo: oklch(0.7 0.015 265); --stage-todo-bg: oklch(1 0 0 / 7%); --stage-todo-fg: oklch(0.82 0.01 265);
+    --stage-contacted: oklch(0.72 0.14 240); --stage-contacted-bg: oklch(0.72 0.14 240 / 15%); --stage-contacted-fg: oklch(0.82 0.1 240);
+    --stage-talking: oklch(0.8 0.15 75); --stage-talking-bg: oklch(0.8 0.15 75 / 14%); --stage-talking-fg: oklch(0.86 0.12 80);
+    --stage-won: oklch(0.88 0.19 125); --stage-won-bg: oklch(0.88 0.19 125 / 14%); --stage-won-fg: oklch(0.9 0.16 125);
+    --stage-lost: oklch(0.7 0.19 22); --stage-lost-bg: oklch(0.7 0.19 22 / 14%); --stage-lost-fg: oklch(0.8 0.13 22);
+  }
+  .ds-c .btn-destructive { background: var(--destructive-soft); }
+</style>
+</head>
+<body>
+<header class="page-head">
+  <h1>Pipeline · trois directions de design</h1>
+  <p>Mêmes composants, trois jeux de tokens. Toutes les couleurs sont en OKLCH pour passer telles quelles dans le thème shadcn.</p>
+</header>
+
+<main class="grid">
+  <!-- Each panel is rendered from the same markup by the script below -->
+  <article class="ds ds-a" data-name="A · Ardoise" data-intent="Sobre et net. Neutres froids, accent indigo, Geist partout. L'outil s'efface derrière les données."
+    data-fonts="Geist (titres & texte) · Geist Mono (emails, dates) — déjà chargées dans l'app."
+    data-swatches='[["background","oklch(0.985 0.002 265)"],["foreground","oklch(0.21 0.02 265)"],["primary","oklch(0.51 0.2 268)"],["secondary","oklch(0.95 0.012 268)"],["card","oklch(1 0 0)"],["border","oklch(0.92 0.008 265)"],["muted-fg","oklch(0.55 0.02 265)"],["destructive","oklch(0.577 0.215 27)"]]'></article>
+
+  <article class="ds ds-b" data-name="B · Papier" data-intent="Chaleureux et éditorial. Fond crème, encre brune, accent terracotta, titres en serif. Un carnet de prospection."
+    data-fonts="Fraunces (titres) · Public Sans (texte) · Geist Mono (emails, dates)."
+    data-swatches='[["background","oklch(0.972 0.012 85)"],["foreground","oklch(0.25 0.02 55)"],["primary","oklch(0.56 0.14 40)"],["secondary","oklch(0.92 0.025 75)"],["card","oklch(0.993 0.005 85)"],["border","oklch(0.88 0.022 75)"],["muted-fg","oklch(0.52 0.03 60)"],["destructive","oklch(0.52 0.18 25)"]]'></article>
+
+  <article class="ds ds-c" data-name="C · Nuit" data-intent="Sombre et dense. Bleu nuit, signal citron vert, formes arrondies. Un tableau de bord qu'on garde ouvert toute la journée."
+    data-fonts="Space Grotesk (titres & texte) · JetBrains Mono (emails, dates)."
+    data-swatches='[["background","oklch(0.17 0.012 265)"],["foreground","oklch(0.95 0.005 265)"],["primary","oklch(0.88 0.19 125)"],["secondary","oklch(0.28 0.015 265)"],["card","oklch(0.215 0.014 265)"],["border","white / 9%"],["muted-fg","oklch(0.68 0.015 265)"],["destructive","oklch(0.7 0.19 22)"]]'></article>
+</main>
+
+<template id="panel">
+  <h2 class="ds-name"></h2>
+  <p class="ds-intent"></p>
+
+  <section>
+    <h3 class="section-title">Couleurs</h3>
+    <div class="swatches"></div>
+    <div class="stages">
+      <span class="badge s-todo">À contacter</span>
+      <span class="badge s-contacted">Contacté</span>
+      <span class="badge s-talking">En discussion</span>
+      <span class="badge s-won">Gagné</span>
+      <span class="badge s-lost">Perdu</span>
+    </div>
+  </section>
+
+  <section>
+    <h3 class="section-title">Typographie</h3>
+    <div class="type-row"><small>H1 30</small><span class="t-h1">À relancer aujourd'hui</span></div>
+    <div class="type-row"><small>H2 20</small><span class="t-h2">En discussion · 4</span></div>
+    <div class="type-row"><small>Body 15</small><span class="t-body">Rappeler après la démo de jeudi.</span></div>
+    <div class="type-row"><small>Small 13</small><span class="t-small">Ajouté le 12 novembre</span></div>
+    <div class="type-row"><small>Mono 13</small><span class="t-mono">claire@atelier-nord.fr · 19/11</span></div>
+    <p class="font-note"></p>
+  </section>
+
+  <section>
+    <h3 class="section-title">Boutons</h3>
+    <div class="row">
+      <button class="btn btn-primary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Nouveau contact</button>
+      <button class="btn btn-secondary">Changer d'étape</button>
+      <button class="btn btn-outline">Annuler</button>
+    </div>
+    <div class="row">
+      <button class="btn btn-ghost">Modifier</button>
+      <button class="btn btn-destructive">Supprimer</button>
+      <button class="btn btn-primary" disabled>Enregistrer</button>
+      <button class="btn btn-outline btn-icon" aria-label="Plus d'actions"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg></button>
+      <button class="btn btn-primary btn-sm">Petit</button>
+    </div>
+  </section>
+
+  <section>
+    <h3 class="section-title">Champs</h3>
+    <div class="fields">
+      <div class="field"><label>Nom</label><input class="input" placeholder="Claire Martin"></div>
+      <div class="field"><label>Entreprise</label><input class="input is-focus" value="Atelier Nord"></div>
+      <div class="field"><label>Email</label><input class="input is-error" value="claire@atelier"><div class="hint err">Adresse email invalide</div></div>
+      <div class="field"><label>Prochaine relance</label><input class="input" type="date" value="2026-11-19"></div>
+      <div class="field full"><label>Étape</label><select class="input"><option>À contacter</option><option>Contacté</option><option selected>En discussion</option><option>Gagné</option><option>Perdu</option></select></div>
+      <div class="field full"><label>Notes</label><textarea class="input" placeholder="Contexte, besoins, prochaine étape…"></textarea><div class="hint">Visible sur la carte (2 lignes).</div></div>
+    </div>
+  </section>
+
+  <section>
+    <h3 class="section-title">Carte de contact</h3>
+    <div class="cards">
+      <div class="card overdue">
+        <div class="card-top">
+          <div><h4 class="card-name">Claire Martin</h4><div class="card-company">Atelier Nord</div></div>
+          <span class="badge s-talking">En discussion</span>
+        </div>
+        <div class="card-email"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>claire@atelier-nord.fr</div>
+        <p class="card-notes">Intéressée par la refonte du site vitrine. Budget validé en interne, attend un devis détaillé avant la fin du mois.</p>
+        <div class="card-foot">
+          <span class="card-date"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Relance en retard · 17/11</span>
+          <button class="btn btn-outline btn-sm">Étape suivante</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-top">
+          <div><h4 class="card-name">Julien Robert</h4><div class="card-company">Brasserie du Port</div></div>
+          <span class="badge s-contacted">Contacté</span>
+        </div>
+        <div class="card-email"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>julien@brasserieduport.fr</div>
+        <p class="card-notes">Premier mail envoyé, a répondu qu'il regarde en décembre.</p>
+        <div class="card-foot">
+          <span class="card-date"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/></svg>Relance le 02/12</span>
+          <button class="btn btn-ghost btn-sm">Étape suivante</button>
+        </div>
+      </div>
+    </div>
+  </section>
+</template>
+
+<script>
+  const tpl = document.getElementById("panel");
+  document.querySelectorAll(".ds").forEach((panel) => {
+    panel.append(tpl.content.cloneNode(true));
+    panel.querySelector(".ds-name").textContent = panel.dataset.name;
+    panel.querySelector(".ds-intent").textContent = panel.dataset.intent;
+    panel.querySelector(".font-note").textContent = panel.dataset.fonts;
+    const swatches = panel.querySelector(".swatches");
+    for (const [name, value] of JSON.parse(panel.dataset.swatches)) {
+      const el = document.createElement("div");
+      el.className = "swatch";
+      el.innerHTML = `<i style="background:var(--${name === "muted-fg" ? "muted-foreground" : name})"></i><b>${name}</b><span>${value}</span>`;
+      swatches.append(el);
+    }
+  });
+</script>
+</body>
+</html>
