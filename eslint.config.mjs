@@ -17,6 +17,8 @@ const eslintConfig = defineConfig([
   },
   {
     files: ["src/services/**"],
+    // index.ts is the composition root: the only service file allowed to wire concrete repositories.
+    ignores: ["src/services/index.ts"],
     rules: {
       "@typescript-eslint/no-restricted-imports": [
         "error",
