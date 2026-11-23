@@ -63,3 +63,32 @@ test("contacts survive closing and reopening the database", async () => {
 
   await expect(reopened.list()).resolves.toEqual([created]);
 });
+
+test("updateStage changes the stage and returns the updated contact", async () => {
+  const repository = createLibsqlContactRepository(openClient());
+  const created = await repository.create(ada);
+
+  const updated = await repository.updateStage(created.id, "contacted");
+
+  expect(updated).toEqual({ ...created, stage: "contacted" });
+  await expect(repository.list()).resolves.toEqual([updated]);
+});
+
+test("updateStage returns null for an unknown contact", async () => {
+  const repository = createLibsqlContactRepository(openClient());
+  await repository.create(ada);
+
+  await expect(repository.updateStage("missing", "won")).resolves.toBeNull();
+});
+
+test("a stage change survives closing and reopening the database", async () => {
+  const firstClient = openClient();
+  const firstRepository = createLibsqlContactRepository(firstClient);
+  const created = await firstRepository.create(ada);
+  await firstRepository.updateStage(created.id, "talking");
+  firstClient.close();
+
+  const reopened = createLibsqlContactRepository(openClient());
+
+  await expect(reopened.list()).resolves.toEqual([{ ...created, stage: "talking" }]);
+});
