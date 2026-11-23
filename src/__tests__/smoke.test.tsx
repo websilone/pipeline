@@ -5,3 +5,7 @@ import Home from "@/app/page";
 test("home page renders", () => {
   expect(renderToStaticMarkup(<Home />)).toContain("Pipeline");
 });
+
+test("home page has a « À relancer aujourd'hui » section", () => {
+  expect(renderToStaticMarkup(<Home />)).toMatch(/<h2[^>]*>À relancer aujourd(&#x27;|')hui<\/h2>/);
+});

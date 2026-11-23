@@ -271,3 +271,66 @@ describe("overdue follow-ups", () => {
     await expect(overdueFlags("2026-11-01", stage)).resolves.toBe(false);
   });
 });
+
+describe("listFollowUpsDue", () => {
+  async function serviceWith(...seeds: { name: string; stage: Stage; nextFollowUpDate?: string }[]) {
+    const { repository, contacts } = createFakeRepository();
+    const service = createContactService(repository);
+    for (const { name, stage, nextFollowUpDate } of seeds) {
+      await service.addContact({ name, nextFollowUpDate });
+      await service.moveContact(contacts[contacts.length - 1].id, stage);
+    }
+    return service;
+  }
+
+  async function dueNames(...seeds: Parameters<typeof serviceWith>) {
+    const service = await serviceWith(...seeds);
+    return (await service.listFollowUpsDue(TODAY)).map((contact) => contact.name);
+  }
+
+  test("includes a « Contacté » contact whose follow-up is today", async () => {
+    await expect(dueNames({ name: "Ada", stage: "contacted", nextFollowUpDate: TODAY })).resolves.toEqual(["Ada"]);
+  });
+
+  test("includes an « En discussion » contact whose follow-up is past", async () => {
+    await expect(dueNames({ name: "Ada", stage: "talking", nextFollowUpDate: "2026-11-02" })).resolves.toEqual([
+      "Ada",
+    ]);
+  });
+
+  test("includes an « À contacter » contact whose follow-up is due", async () => {
+    await expect(dueNames({ name: "Ada", stage: "todo", nextFollowUpDate: TODAY })).resolves.toEqual(["Ada"]);
+  });
+
+  test.each(["won", "lost"] as const)("excludes a %s contact even when its follow-up is past", async (stage) => {
+    await expect(dueNames({ name: "Ada", stage, nextFollowUpDate: "2026-11-02" })).resolves.toEqual([]);
+  });
+
+  test("excludes a contact whose follow-up is tomorrow", async () => {
+    await expect(dueNames({ name: "Ada", stage: "contacted", nextFollowUpDate: "2026-11-24" })).resolves.toEqual([]);
+  });
+
+  test("excludes a contact without a follow-up date", async () => {
+    await expect(dueNames({ name: "Ada", stage: "contacted" })).resolves.toEqual([]);
+  });
+
+  test("lists the oldest follow-ups first and flags the overdue ones", async () => {
+    const service = await serviceWith(
+      { name: "Today", stage: "contacted", nextFollowUpDate: TODAY },
+      { name: "Oldest", stage: "talking", nextFollowUpDate: "2026-10-01" },
+      { name: "Late", stage: "contacted", nextFollowUpDate: "2026-11-20" },
+    );
+
+    const due = await service.listFollowUpsDue(TODAY);
+
+    expect(due.map(({ name, overdue }) => ({ name, overdue }))).toEqual([
+      { name: "Oldest", overdue: true },
+      { name: "Late", overdue: true },
+      { name: "Today", overdue: false },
+    ]);
+  });
+
+  test("returns an empty list when nobody is due", async () => {
+    await expect(dueNames()).resolves.toEqual([]);
+  });
+});
