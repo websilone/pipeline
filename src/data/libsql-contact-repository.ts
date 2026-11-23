@@ -45,5 +45,15 @@ export function createLibsqlContactRepository(client: Client): ContactRepository
       const result = await client.execute("SELECT * FROM contacts ORDER BY created_at, rowid");
       return result.rows.map(toContact);
     },
+
+    async updateStage(id: string, stage: Stage): Promise<Contact | null> {
+      await ensureSchema();
+      const result = await client.execute({
+        sql: "UPDATE contacts SET stage = ? WHERE id = ? RETURNING *",
+        args: [stage, id],
+      });
+      const [row] = result.rows;
+      return row ? toContact(row) : null;
+    },
   };
 }

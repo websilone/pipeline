@@ -16,6 +16,11 @@ const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 export type ContactInput = { name: string; company?: string; email?: string };
 export type ContactErrors = Partial<Record<"name" | "email", string>>;
 export type AddContactResult = { ok: true; contact: Contact } | { ok: false; errors: ContactErrors };
+export type MoveContactResult = { ok: true; contact: Contact } | { ok: false; error: string };
+
+export function isStage(value: string): value is Stage {
+  return STAGES.some((stage) => stage.id === value);
+}
 
 function validate(name: string, email: string): ContactErrors {
   const errors: ContactErrors = {};
@@ -50,6 +55,14 @@ export function createContactService(repository: ContactRepository) {
       return Object.fromEntries(
         STAGES.map(({ id }) => [id, contacts.filter((contact) => contact.stage === id)]),
       ) as Record<Stage, Contact[]>;
+    },
+
+    async moveContact(id: string, stage: string): Promise<MoveContactResult> {
+      if (!isStage(stage)) return { ok: false, error: "Étape inconnue." };
+
+      const contact = await repository.updateStage(id, stage);
+      if (!contact) return { ok: false, error: "Contact introuvable." };
+      return { ok: true, contact };
     },
   };
 }

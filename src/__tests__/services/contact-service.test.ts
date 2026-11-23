@@ -1,19 +1,6 @@
 import { describe, expect, test } from "vitest";
-import type { Contact, ContactRepository, NewContact } from "@/data/contact-repository";
-import { createContactService, STAGES, type ContactInput } from "@/services/contact-service";
-
-function createFakeRepository() {
-  const contacts: Contact[] = [];
-  const repository: ContactRepository = {
-    create: async (input: NewContact) => {
-      const contact = { ...input, id: String(contacts.length + 1), createdAt: "2026-11-20T10:00:00.000Z" };
-      contacts.push(contact);
-      return contact;
-    },
-    list: async () => [...contacts],
-  };
-  return { repository, contacts };
-}
+import { createContactService, isStage, STAGES, type ContactInput } from "@/services/contact-service";
+import { createFakeRepository } from "../helpers/fake-contact-repository";
 
 describe("stages", () => {
   test("are the five fixed stages, starting with « À contacter »", () => {
@@ -103,5 +90,66 @@ describe("listContactsByStage", () => {
     expect(Object.keys(byStage)).toEqual(STAGES.map((stage) => stage.id));
     expect(byStage.todo.map((contact) => contact.name)).toEqual(["Ada"]);
     expect(byStage.contacted).toEqual([]);
+  });
+});
+
+describe("isStage", () => {
+  test.each(["todo", "contacted", "talking", "won", "lost"])("accepts the fixed stage %j", (stage) => {
+    expect(isStage(stage)).toBe(true);
+  });
+
+  test.each(["", "archived", "TODO", "À contacter", "toString"])("rejects %j", (stage) => {
+    expect(isStage(stage)).toBe(false);
+  });
+});
+
+describe("moveContact", () => {
+  async function serviceWithAda() {
+    const { repository, contacts } = createFakeRepository();
+    const service = createContactService(repository);
+    const added = await service.addContact({ name: "Ada" });
+    if (!added.ok) throw new Error("setup failed");
+    return { service, repository, contacts, ada: added.contact };
+  }
+
+  test("moves a contact from « À contacter » to « Contacté »", async () => {
+    const { service, ada } = await serviceWithAda();
+
+    const result = await service.moveContact(ada.id, "contacted");
+
+    expect(result).toMatchObject({ ok: true, contact: { id: ada.id, stage: "contacted" } });
+    const byStage = await service.listContactsByStage();
+    expect(byStage.contacted.map((contact) => contact.name)).toEqual(["Ada"]);
+    expect(byStage.todo).toEqual([]);
+  });
+
+  test("allows moving back to an earlier stage", async () => {
+    const { service, ada } = await serviceWithAda();
+    await service.moveContact(ada.id, "won");
+
+    const result = await service.moveContact(ada.id, "todo");
+
+    expect(result).toMatchObject({ ok: true, contact: { stage: "todo" } });
+  });
+
+  test.each(["archived", "", "Contacté"])(
+    "refuses the unknown stage %j and leaves the contact where it was",
+    async (stage) => {
+      const { service, repository, contacts } = await serviceWithAda();
+
+      const result = await service.moveContact(contacts[0].id, stage);
+
+      expect(result).toEqual({ ok: false, error: "Étape inconnue." });
+      expect(repository.updateStage).not.toHaveBeenCalled();
+      expect(contacts[0].stage).toBe("todo");
+    },
+  );
+
+  test("refuses an unknown contact", async () => {
+    const { service } = await serviceWithAda();
+
+    const result = await service.moveContact("missing", "contacted");
+
+    expect(result).toEqual({ ok: false, error: "Contact introuvable." });
   });
 });
