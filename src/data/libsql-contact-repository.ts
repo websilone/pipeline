@@ -1,6 +1,14 @@
 import type { Client, Row } from "@libsql/client";
-import type { Contact, ContactRepository, NewContact, Stage } from "./contact-repository";
+import type { Contact, ContactChanges, ContactRepository, NewContact, Stage } from "./contact-repository";
 import { migrate } from "./schema";
+
+const COLUMNS: Record<keyof ContactChanges, string> = {
+  name: "name",
+  company: "company",
+  email: "email",
+  notes: "notes",
+  nextFollowUpDate: "next_follow_up_date",
+};
 
 function toContact(row: Row): Contact {
   return {
@@ -51,6 +59,19 @@ export function createLibsqlContactRepository(client: Client): ContactRepository
       const result = await client.execute({
         sql: "UPDATE contacts SET stage = ? WHERE id = ? RETURNING *",
         args: [stage, id],
+      });
+      const [row] = result.rows;
+      return row ? toContact(row) : null;
+    },
+
+    async update(id: string, changes: ContactChanges): Promise<Contact | null> {
+      await ensureSchema();
+      const entries = (Object.keys(COLUMNS) as (keyof ContactChanges)[])
+        .filter((key) => changes[key] !== undefined)
+        .map((key) => [COLUMNS[key], changes[key] ?? null] as const);
+      const result = await client.execute({
+        sql: `UPDATE contacts SET ${entries.map(([column]) => `${column} = ?`).join(", ")} WHERE id = ? RETURNING *`,
+        args: [...entries.map(([, value]) => value), id],
       });
       const [row] = result.rows;
       return row ? toContact(row) : null;

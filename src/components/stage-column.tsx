@@ -1,7 +1,8 @@
 import { ContactCard } from "@/components/contact-card";
+import type { ScheduleFollowUpAction } from "@/components/follow-up-form";
 import type { MoveContactAction } from "@/components/stage-select";
 import { cn } from "@/lib/utils";
-import { STAGES, type Contact, type Stage } from "@/services/contact-service";
+import { STAGES, type BoardContact, type Stage } from "@/services/contact-service";
 
 const STAGE_STYLES: Record<Stage, { column: string; title: string }> = {
   todo: { column: "bg-stage-todo", title: "text-stage-todo-foreground" },
@@ -13,11 +14,12 @@ const STAGE_STYLES: Record<Stage, { column: string; title: string }> = {
 
 type StageColumnProps = {
   stage: Stage;
-  contacts: Contact[];
+  contacts: BoardContact[];
   moveAction: MoveContactAction;
+  scheduleAction: ScheduleFollowUpAction;
 };
 
-export function StageColumn({ stage, contacts, moveAction }: StageColumnProps) {
+export function StageColumn({ stage, contacts, moveAction, scheduleAction }: StageColumnProps) {
   const label = STAGES.find(({ id }) => id === stage)?.label;
   const styles = STAGE_STYLES[stage];
 
@@ -33,7 +35,7 @@ export function StageColumn({ stage, contacts, moveAction }: StageColumnProps) {
         <ul className="flex flex-col gap-2">
           {contacts.map((contact) => (
             <li key={contact.id}>
-              <ContactCard contact={contact} moveAction={moveAction} />
+              <ContactCard contact={contact} moveAction={moveAction} scheduleAction={scheduleAction} />
             </li>
           ))}
         </ul>

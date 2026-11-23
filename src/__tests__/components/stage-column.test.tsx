@@ -1,9 +1,9 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { expect, test } from "vitest";
 import { StageColumn } from "@/components/stage-column";
-import type { Contact } from "@/services/contact-service";
+import type { BoardContact } from "@/services/contact-service";
 
-const ada: Contact = {
+const ada: BoardContact = {
   id: "1",
   name: "Ada Lovelace",
   company: "Analytical Engines",
@@ -12,12 +12,13 @@ const ada: Contact = {
   stage: "todo",
   nextFollowUpDate: null,
   createdAt: "2026-11-20T10:00:00.000Z",
+  overdue: false,
 };
 
-const moveAction = async () => {};
+const actions = { moveAction: async () => {}, scheduleAction: async () => {} };
 
 test("shows the stage title and its contacts", () => {
-  const html = renderToStaticMarkup(<StageColumn stage="todo" contacts={[ada]} moveAction={moveAction} />);
+  const html = renderToStaticMarkup(<StageColumn stage="todo" contacts={[ada]} {...actions} />);
 
   expect(html).toContain("À contacter");
   expect(html).toContain("Ada Lovelace");
@@ -26,7 +27,7 @@ test("shows the stage title and its contacts", () => {
 });
 
 test("shows an empty state when the stage has no contact", () => {
-  expect(renderToStaticMarkup(<StageColumn stage="todo" contacts={[]} moveAction={moveAction} />)).toContain(
+  expect(renderToStaticMarkup(<StageColumn stage="todo" contacts={[]} {...actions} />)).toContain(
     "Aucun contact",
   );
 });
@@ -37,7 +38,7 @@ test.each([
   ["won", "Gagné"],
   ["lost", "Perdu"],
 ] as const)("titles the %s column « %s » and uses its theme tokens", (stage, label) => {
-  const html = renderToStaticMarkup(<StageColumn stage={stage} contacts={[]} moveAction={moveAction} />);
+  const html = renderToStaticMarkup(<StageColumn stage={stage} contacts={[]} {...actions} />);
 
   expect(html).toContain(label);
   expect(html).toContain(`bg-stage-${stage}`);

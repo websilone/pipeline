@@ -4,4 +4,4 @@ import { createContactService } from "./contact-service";
 export const contactService = createContactService(createContactRepository());
 
 export { STAGES } from "./contact-service";
-export type { Contact, Stage } from "./contact-service";
+export type { BoardContact, Contact, Stage } from "./contact-service";
