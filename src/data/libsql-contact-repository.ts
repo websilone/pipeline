@@ -54,6 +54,13 @@ export function createLibsqlContactRepository(client: Client): ContactRepository
       return result.rows.map(toContact);
     },
 
+    async findById(id: string): Promise<Contact | null> {
+      await ensureSchema();
+      const result = await client.execute({ sql: "SELECT * FROM contacts WHERE id = ?", args: [id] });
+      const [row] = result.rows;
+      return row ? toContact(row) : null;
+    },
+
     async updateStage(id: string, stage: Stage): Promise<Contact | null> {
       await ensureSchema();
       const result = await client.execute({

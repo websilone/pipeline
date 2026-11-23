@@ -86,3 +86,7 @@ test("offers a date field to plan or change the follow-up", () => {
   expect(html).toMatch(/<input[^>]*aria-label="Prochaine relance de Ada Lovelace"/);
   expect(html).toContain("Planifier");
 });
+
+test("links the contact name to its sheet", () => {
+  expect(render(contactIn("todo"))).toMatch(/<a[^>]*href="\/contacts\/42"[^>]*>Ada Lovelace<\/a>/);
+});

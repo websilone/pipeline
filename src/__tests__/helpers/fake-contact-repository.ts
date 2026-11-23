@@ -10,6 +10,10 @@ export function createFakeRepository() {
       return contact;
     }),
     list: vi.fn(async () => contacts.map((contact) => ({ ...contact }))),
+    findById: vi.fn(async (id: string) => {
+      const contact = contacts.find((candidate) => candidate.id === id);
+      return contact ? { ...contact } : null;
+    }),
     updateStage: vi.fn(async (id: string, stage: Contact["stage"]) => {
       const contact = contacts.find((candidate) => candidate.id === id);
       if (!contact) return null;
