@@ -39,3 +39,26 @@ test("reports an unknown contact", () => {
 
   expect(html).toMatch(/role="alert"[^>]*>Contact introuvable\./);
 });
+
+test("shows the company and notes errors and caps every field's length", () => {
+  const html = renderToStaticMarkup(
+    <EditContactFields
+      contactId="42"
+      state={{
+        errors: { company: "200 caractères maximum.", notes: "5000 caractères maximum." },
+        values,
+        saved: false,
+      }}
+      pending={false}
+    />,
+  );
+
+  expect(html.match(/<input[^>]*name="company"[^>]*>/)?.[0]).toContain('aria-invalid="true"');
+  expect(html).toMatch(/id="company-error"[^>]*>200 caractères maximum\./);
+  expect(html.match(/<textarea[^>]*name="notes"[^>]*>/)?.[0]).toContain('aria-invalid="true"');
+  expect(html).toMatch(/id="notes-error"[^>]*>5000 caractères maximum\./);
+  expect(html.match(/<input[^>]*name="name"[^>]*>/)?.[0]).toContain('maxLength="200"');
+  expect(html.match(/<input[^>]*name="company"[^>]*>/)?.[0]).toContain('maxLength="200"');
+  expect(html.match(/<input[^>]*name="email"[^>]*>/)?.[0]).toContain('maxLength="254"');
+  expect(html.match(/<textarea[^>]*name="notes"[^>]*>/)?.[0]).toContain('maxLength="5000"');
+});

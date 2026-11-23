@@ -433,3 +433,63 @@ describe("updateContact", () => {
     expect(byStage.todo[0]).toMatchObject({ name: "Ada King", company: "Babbage" });
   });
 });
+
+describe("field length limits", () => {
+  const long = (length: number) => "a".repeat(length);
+  const emailOfLength = (length: number) => `${long(length - 5)}@x.fr`;
+
+  test("accepts fields at their maximum length", async () => {
+    const { repository, contacts } = createFakeRepository();
+    const service = createContactService(repository);
+
+    const result = await service.addContact({ name: long(200), company: long(200), email: emailOfLength(254) });
+    expect(result.ok).toBe(true);
+
+    const update = await service.updateContact(contacts[0].id, {
+      name: long(200),
+      company: long(200),
+      email: emailOfLength(254),
+      notes: long(5000),
+    });
+    expect(update.ok).toBe(true);
+  });
+
+  test("refuses a contact whose name, company or email is too long, without creating anything", async () => {
+    const { repository, contacts } = createFakeRepository();
+
+    const result = await createContactService(repository).addContact({
+      name: long(201),
+      company: long(201),
+      email: emailOfLength(255),
+    });
+
+    expect(result).toEqual({
+      ok: false,
+      errors: {
+        name: "200 caractères maximum.",
+        company: "200 caractères maximum.",
+        email: "254 caractères maximum.",
+      },
+    });
+    expect(contacts).toHaveLength(0);
+  });
+
+  test("refuses notes that are too long and keeps the contact as it was", async () => {
+    const { repository, contacts } = createFakeRepository();
+    const service = createContactService(repository);
+    await service.addContact({ name: "Ada" });
+
+    const result = await service.updateContact(contacts[0].id, {
+      name: "Ada",
+      company: long(201),
+      email: "",
+      notes: long(5001),
+    });
+
+    expect(result).toEqual({
+      ok: false,
+      errors: { company: "200 caractères maximum.", notes: "5000 caractères maximum." },
+    });
+    expect(repository.update).not.toHaveBeenCalled();
+  });
+});

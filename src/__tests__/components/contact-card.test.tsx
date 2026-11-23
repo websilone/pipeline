@@ -18,7 +18,7 @@ function contactIn(stage: Stage, changes: Partial<BoardContact> = {}): BoardCont
   };
 }
 
-const actions = { moveAction: async () => {}, scheduleAction: async () => {} };
+const actions = { moveAction: async () => {}, scheduleAction: async () => ({}) };
 
 function render(contact: BoardContact) {
   return renderToStaticMarkup(<ContactCard contact={contact} {...actions} />);

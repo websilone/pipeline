@@ -17,11 +17,13 @@ const DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
 const INVALID_DATE = "La date n'est pas valide.";
 const UNKNOWN_CONTACT = "Contact introuvable.";
 
+export const MAX_LENGTHS = { name: 200, company: 200, email: 254, notes: 5000 } as const;
+
 /** A day as "YYYY-MM-DD", e.g. "2026-11-23". */
 export type IsoDate = string;
 
 export type ContactInput = { name: string; company?: string; email?: string; nextFollowUpDate?: string };
-export type ContactErrors = Partial<Record<"name" | "email" | "nextFollowUpDate", string>>;
+export type ContactErrors = Partial<Record<"name" | "company" | "email" | "notes" | "nextFollowUpDate", string>>;
 export type AddContactResult = { ok: true; contact: Contact } | { ok: false; errors: ContactErrors };
 export type UpdateResult = { ok: true; contact: Contact } | { ok: false; error: string };
 export type BoardContact = Contact & { overdue: boolean };
@@ -63,11 +65,22 @@ function toBoardContact(contact: Contact, today: IsoDate): BoardContact {
   return { ...contact, overdue: isOverdue(contact, today) };
 }
 
-function validate(name: string, email: string, nextFollowUpDate: IsoDate | null | undefined): ContactErrors {
+type ValidatedFields = {
+  name: string;
+  company: string;
+  email: string;
+  notes: string;
+  nextFollowUpDate: IsoDate | null | undefined;
+};
+
+function validate(fields: ValidatedFields): ContactErrors {
   const errors: ContactErrors = {};
-  if (!name) errors.name = "Le nom est obligatoire.";
-  if (email && !EMAIL_PATTERN.test(email)) errors.email = "L'email n'est pas valide.";
-  if (nextFollowUpDate === undefined) errors.nextFollowUpDate = INVALID_DATE;
+  for (const field of Object.keys(MAX_LENGTHS) as (keyof typeof MAX_LENGTHS)[]) {
+    if (fields[field].length > MAX_LENGTHS[field]) errors[field] = `${MAX_LENGTHS[field]} caractères maximum.`;
+  }
+  if (!fields.name) errors.name = "Le nom est obligatoire.";
+  if (!errors.email && fields.email && !EMAIL_PATTERN.test(fields.email)) errors.email = "L'email n'est pas valide.";
+  if (fields.nextFollowUpDate === undefined) errors.nextFollowUpDate = INVALID_DATE;
   return errors;
 }
 
@@ -79,7 +92,7 @@ export function createContactService(repository: ContactRepository) {
       const email = input.email?.trim() ?? "";
       const nextFollowUpDate = parseDate(input.nextFollowUpDate ?? "");
 
-      const errors = validate(name, email, nextFollowUpDate);
+      const errors = validate({ name, company, email, notes: "", nextFollowUpDate });
       if (Object.keys(errors).length > 0 || nextFollowUpDate === undefined) return { ok: false, errors };
 
       const contact = await repository.create({
@@ -118,7 +131,7 @@ export function createContactService(repository: ContactRepository) {
       const email = input.email.trim();
       const notes = input.notes.trim();
 
-      const errors = validate(name, email, null);
+      const errors = validate({ name, company, email, notes, nextFollowUpDate: null });
       if (Object.keys(errors).length > 0) return { ok: false, errors };
 
       const contact = await repository.update(id, { name, company, email, notes });

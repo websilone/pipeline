@@ -15,7 +15,7 @@ const ada: BoardContact = {
   overdue: false,
 };
 
-const actions = { moveAction: async () => {}, scheduleAction: async () => {} };
+const actions = { moveAction: async () => {}, scheduleAction: async () => ({}) };
 
 test("shows the stage title and its contacts", () => {
   const html = renderToStaticMarkup(<StageColumn stage="todo" contacts={[ada]} {...actions} />);

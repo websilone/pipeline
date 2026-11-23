@@ -4,7 +4,7 @@ import { addContactAction, moveContactAction, scheduleFollowUpAction } from "@/a
 import { AddContactForm } from "@/components/add-contact-form";
 import { FollowUpsDue } from "@/components/follow-ups-due";
 import { StageColumn } from "@/components/stage-column";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { todayInParis } from "@/lib/dates";
 import { contactService, STAGES } from "@/services";
 
@@ -44,7 +44,9 @@ export default function Home() {
         <AddContactForm action={addContactAction} />
         <Card className="w-full max-w-xl">
           <CardHeader>
-            <h2 className="font-heading text-base font-medium">À relancer aujourd&apos;hui</h2>
+            <CardTitle>
+              <h2>À relancer aujourd&apos;hui</h2>
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <Suspense fallback={loading}>

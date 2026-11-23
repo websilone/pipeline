@@ -7,9 +7,10 @@ type FormFieldProps = {
   type?: string;
   defaultValue: string;
   error?: string;
+  maxLength?: number;
 };
 
-export function FormField({ name, label, type = "text", defaultValue, error }: FormFieldProps) {
+export function FormField({ name, label, type = "text", defaultValue, error, maxLength }: FormFieldProps) {
   const errorId = `${name}-error`;
 
   return (
@@ -20,6 +21,7 @@ export function FormField({ name, label, type = "text", defaultValue, error }: F
         name={name}
         type={type}
         defaultValue={defaultValue}
+        maxLength={maxLength}
         aria-invalid={error ? true : undefined}
         aria-describedby={error ? errorId : undefined}
       />

@@ -27,7 +27,7 @@ export function createLibsqlContactRepository(client: Client): ContactRepository
   let ready: Promise<void> | undefined;
   const ensureSchema = () => (ready ??= migrate(client));
 
-  return {
+  const repository: ContactRepository = {
     async create(input: NewContact): Promise<Contact> {
       await ensureSchema();
       const contact: Contact = { ...input, id: crypto.randomUUID(), createdAt: new Date().toISOString() };
@@ -76,6 +76,8 @@ export function createLibsqlContactRepository(client: Client): ContactRepository
       const entries = (Object.keys(COLUMNS) as (keyof ContactChanges)[])
         .filter((key) => changes[key] !== undefined)
         .map((key) => [COLUMNS[key], changes[key] ?? null] as const);
+      if (entries.length === 0) return repository.findById(id);
+
       const result = await client.execute({
         sql: `UPDATE contacts SET ${entries.map(([column]) => `${column} = ?`).join(", ")} WHERE id = ? RETURNING *`,
         args: [...entries.map(([, value]) => value), id],
@@ -84,4 +86,5 @@ export function createLibsqlContactRepository(client: Client): ContactRepository
       return row ? toContact(row) : null;
     },
   };
+  return repository;
 }
