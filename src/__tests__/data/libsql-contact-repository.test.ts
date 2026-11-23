@@ -132,3 +132,33 @@ test("a follow-up date survives closing and reopening the database", async () =>
 
   await expect(reopened.list()).resolves.toEqual([{ ...created, nextFollowUpDate: "2026-12-01" }]);
 });
+
+test("findById returns the contact, or null when it does not exist", async () => {
+  const repository = createLibsqlContactRepository(openClient());
+  const created = await repository.create(ada);
+
+  await expect(repository.findById(created.id)).resolves.toEqual(created);
+  await expect(repository.findById("missing")).resolves.toBeNull();
+});
+
+test("update changes name, company, email and notes, and keeps the other fields", async () => {
+  const repository = createLibsqlContactRepository(openClient());
+  const created = await repository.create({ ...ada, stage: "talking", nextFollowUpDate: "2026-12-01" });
+  const changes = { name: "Ada King", company: "Babbage & Co", email: "ada@babbage.example", notes: "Rappeler mardi" };
+
+  const updated = await repository.update(created.id, changes);
+
+  expect(updated).toEqual({ ...created, ...changes });
+});
+
+test("edited notes survive closing and reopening the database", async () => {
+  const firstClient = openClient();
+  const firstRepository = createLibsqlContactRepository(firstClient);
+  const created = await firstRepository.create(ada);
+  await firstRepository.update(created.id, { notes: "Intéressée par l'offre annuelle" });
+  firstClient.close();
+
+  const reopened = createLibsqlContactRepository(openClient());
+
+  await expect(reopened.findById(created.id)).resolves.toMatchObject({ notes: "Intéressée par l'offre annuelle" });
+});

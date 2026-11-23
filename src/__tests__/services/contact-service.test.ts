@@ -334,3 +334,102 @@ describe("listFollowUpsDue", () => {
     await expect(dueNames()).resolves.toEqual([]);
   });
 });
+
+describe("getContact", () => {
+  test("returns the contact with all its details", async () => {
+    const { repository, contacts } = createFakeRepository();
+    const service = createContactService(repository);
+    await service.addContact({ name: "Ada", company: "Engines", email: "ada@example.com", nextFollowUpDate: TODAY });
+
+    await expect(service.getContact(contacts[0].id)).resolves.toMatchObject({
+      name: "Ada",
+      company: "Engines",
+      email: "ada@example.com",
+      notes: "",
+      stage: "todo",
+      nextFollowUpDate: TODAY,
+    });
+  });
+
+  test("returns null for an unknown contact", async () => {
+    const { repository } = createFakeRepository();
+
+    await expect(createContactService(repository).getContact("missing")).resolves.toBeNull();
+  });
+});
+
+describe("updateContact", () => {
+  async function serviceWithAda() {
+    const { repository, contacts } = createFakeRepository();
+    const service = createContactService(repository);
+    await service.addContact({ name: "Ada", company: "Engines", email: "ada@example.com" });
+    return { service, repository, contacts, id: contacts[0].id };
+  }
+
+  const details = { name: "Ada", company: "Engines", email: "ada@example.com", notes: "" };
+
+  test("saves new notes", async () => {
+    const { service, contacts, id } = await serviceWithAda();
+
+    const result = await service.updateContact(id, { ...details, notes: "Rappeler après le salon." });
+
+    expect(result).toMatchObject({ ok: true, contact: { notes: "Rappeler après le salon." } });
+    expect(contacts[0].notes).toBe("Rappeler après le salon.");
+  });
+
+  test("corrects name, company and email, trimmed", async () => {
+    const { service, contacts, id } = await serviceWithAda();
+
+    await service.updateContact(id, { name: " Ada King ", company: " Babbage ", email: " ada@babbage.example ", notes: "" });
+
+    expect(contacts[0]).toMatchObject({ name: "Ada King", company: "Babbage", email: "ada@babbage.example" });
+  });
+
+  test("keeps stage and follow-up date untouched", async () => {
+    const { service, contacts, id } = await serviceWithAda();
+    await service.moveContact(id, "talking");
+    await service.scheduleFollowUp(id, "2026-12-01");
+
+    await service.updateContact(id, { ...details, notes: "x", stage: "won", nextFollowUpDate: "" } as typeof details);
+
+    expect(contacts[0]).toMatchObject({ stage: "talking", nextFollowUpDate: "2026-12-01" });
+  });
+
+  test.each(["", "   "])("refuses an empty name (%j) and keeps the contact as it was", async (name) => {
+    const { service, repository, contacts, id } = await serviceWithAda();
+
+    const result = await service.updateContact(id, { ...details, name, notes: "nouvelles notes" });
+
+    expect(result).toEqual({ ok: false, errors: { name: "Le nom est obligatoire." } });
+    expect(repository.update).not.toHaveBeenCalled();
+    expect(contacts[0]).toMatchObject({ name: "Ada", notes: "" });
+  });
+
+  test("refuses a malformed email", async () => {
+    const { service, repository, id } = await serviceWithAda();
+
+    const result = await service.updateContact(id, { ...details, email: "ada@" });
+
+    expect(result).toEqual({ ok: false, errors: { email: "L'email n'est pas valide." } });
+    expect(repository.update).not.toHaveBeenCalled();
+  });
+
+  test("refuses an unknown contact", async () => {
+    const { service } = await serviceWithAda();
+
+    await expect(service.updateContact("missing", details)).resolves.toEqual({
+      ok: false,
+      errors: {},
+      error: "Contact introuvable.",
+    });
+  });
+
+  test("shows the new values on the board", async () => {
+    const { service, id } = await serviceWithAda();
+
+    await service.updateContact(id, { ...details, name: "Ada King", company: "Babbage" });
+
+    const byStage = await service.listContactsByStage(TODAY);
+    expect(byStage.todo[0]).toMatchObject({ name: "Ada King", company: "Babbage" });
+  });
+});

@@ -1,4 +1,4 @@
-import { beforeEach, expect, test, vi } from "vitest";
+import { beforeEach, describe, expect, test, vi } from "vitest";
 import { createContactService } from "@/services/contact-service";
 import { createFakeRepository } from "../helpers/fake-contact-repository";
 
@@ -12,7 +12,9 @@ vi.mock("@/services", () => ({
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 
 const { revalidatePath } = await import("next/cache");
-const { addContactAction, moveContactAction, scheduleFollowUpAction } = await import("@/app/actions");
+const { addContactAction, moveContactAction, scheduleFollowUpAction, updateContactAction } = await import(
+  "@/app/actions"
+);
 const { EMPTY_FORM_STATE } = await import("@/components/contact-form-fields");
 
 let contacts: ReturnType<typeof createFakeRepository>["contacts"];
@@ -82,4 +84,37 @@ test("refuses an invalid follow-up date sent from the card", async () => {
 
   expect(contacts[0].nextFollowUpDate).toBeNull();
   expect(revalidatePath).not.toHaveBeenCalled();
+});
+
+describe("updateContactAction", () => {
+  const initial = { errors: {}, values: { name: "", company: "", email: "", notes: "" }, saved: false };
+
+  test("saves the notes, confirms, and refreshes the board and the sheet", async () => {
+    const values = { name: "Ada", company: "Engines", email: "", notes: "Rappeler mardi" };
+
+    const state = await updateContactAction(initial, formData({ id: contacts[0].id, ...values }));
+
+    expect(state).toEqual({ errors: {}, values, saved: true });
+    expect(contacts[0]).toMatchObject(values);
+    expect(revalidatePath).toHaveBeenCalledWith("/");
+    expect(revalidatePath).toHaveBeenCalledWith(`/contacts/${contacts[0].id}`);
+  });
+
+  test("refuses an empty name with an error and keeps the contact", async () => {
+    const values = { name: "", company: "", email: "", notes: "Rappeler mardi" };
+
+    const state = await updateContactAction(initial, formData({ id: contacts[0].id, ...values }));
+
+    expect(state).toEqual({ errors: { name: "Le nom est obligatoire." }, values, saved: false });
+    expect(contacts[0]).toMatchObject({ name: "Ada", notes: "" });
+    expect(revalidatePath).not.toHaveBeenCalled();
+  });
+
+  test("reports an unknown contact", async () => {
+    const values = { name: "Ada", company: "", email: "", notes: "" };
+
+    const state = await updateContactAction(initial, formData({ id: "missing", ...values }));
+
+    expect(state).toEqual({ errors: {}, values, saved: false, error: "Contact introuvable." });
+  });
 });

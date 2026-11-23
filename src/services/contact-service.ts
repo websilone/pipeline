@@ -25,6 +25,10 @@ export type ContactErrors = Partial<Record<"name" | "email" | "nextFollowUpDate"
 export type AddContactResult = { ok: true; contact: Contact } | { ok: false; errors: ContactErrors };
 export type UpdateResult = { ok: true; contact: Contact } | { ok: false; error: string };
 export type BoardContact = Contact & { overdue: boolean };
+export type ContactDetailsInput = { name: string; company: string; email: string; notes: string };
+export type UpdateContactResult =
+  | { ok: true; contact: Contact }
+  | { ok: false; errors: ContactErrors; error?: string };
 
 export function isStage(value: string): value is Stage {
   return STAGES.some((stage) => stage.id === value);
@@ -102,6 +106,24 @@ export function createContactService(repository: ContactRepository) {
         .filter((contact) => isDue(contact, today))
         .sort((a, b) => (a.nextFollowUpDate ?? "").localeCompare(b.nextFollowUpDate ?? ""))
         .map((contact) => toBoardContact(contact, today));
+    },
+
+    async getContact(id: string): Promise<Contact | null> {
+      return repository.findById(id);
+    },
+
+    async updateContact(id: string, input: ContactDetailsInput): Promise<UpdateContactResult> {
+      const name = input.name.trim();
+      const company = input.company.trim();
+      const email = input.email.trim();
+      const notes = input.notes.trim();
+
+      const errors = validate(name, email, null);
+      if (Object.keys(errors).length > 0) return { ok: false, errors };
+
+      const contact = await repository.update(id, { name, company, email, notes });
+      if (!contact) return { ok: false, errors: {}, error: UNKNOWN_CONTACT };
+      return { ok: true, contact };
     },
 
     async moveContact(id: string, stage: string): Promise<UpdateResult> {

@@ -18,6 +18,7 @@ export type ContactChanges = Partial<Pick<Contact, "name" | "company" | "email" 
 export interface ContactRepository {
   create(input: NewContact): Promise<Contact>;
   list(): Promise<Contact[]>;
+  findById(id: string): Promise<Contact | null>;
   /** Returns the updated contact, or null when no contact has this id. */
   updateStage(id: string, stage: Stage): Promise<Contact | null>;
   /** Applies the given changes. Returns the updated contact, or null when no contact has this id. */

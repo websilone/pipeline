@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { CalendarClock } from "lucide-react";
 import { FollowUpForm, type ScheduleFollowUpAction } from "@/components/follow-up-form";
 import { StageSelect, type MoveContactAction } from "@/components/stage-select";
@@ -28,7 +29,11 @@ export function ContactCard({ contact, moveAction, scheduleAction }: ContactCard
   return (
     <Card size="sm">
       <CardHeader>
-        <CardTitle>{contact.name}</CardTitle>
+        <CardTitle>
+          <Link href={`/contacts/${contact.id}`} className="underline-offset-4 hover:underline">
+            {contact.name}
+          </Link>
+        </CardTitle>
         {contact.company && <CardDescription>{contact.company}</CardDescription>}
       </CardHeader>
       <CardContent className="flex flex-col gap-1">
