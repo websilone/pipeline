@@ -92,3 +92,43 @@ test("a stage change survives closing and reopening the database", async () => {
 
   await expect(reopened.list()).resolves.toEqual([{ ...created, stage: "talking" }]);
 });
+
+test("update sets the follow-up date and returns the updated contact", async () => {
+  const repository = createLibsqlContactRepository(openClient());
+  const created = await repository.create(ada);
+
+  const updated = await repository.update(created.id, { nextFollowUpDate: "2026-12-01" });
+
+  expect(updated).toEqual({ ...created, nextFollowUpDate: "2026-12-01" });
+  await expect(repository.list()).resolves.toEqual([updated]);
+});
+
+test("update replaces then clears the follow-up date", async () => {
+  const repository = createLibsqlContactRepository(openClient());
+  const created = await repository.create({ ...ada, nextFollowUpDate: "2026-12-01" });
+
+  await expect(repository.update(created.id, { nextFollowUpDate: "2027-01-15" })).resolves.toMatchObject({
+    nextFollowUpDate: "2027-01-15",
+  });
+  await expect(repository.update(created.id, { nextFollowUpDate: null })).resolves.toMatchObject({
+    nextFollowUpDate: null,
+  });
+});
+
+test("update returns null for an unknown contact", async () => {
+  const repository = createLibsqlContactRepository(openClient());
+
+  await expect(repository.update("missing", { nextFollowUpDate: "2026-12-01" })).resolves.toBeNull();
+});
+
+test("a follow-up date survives closing and reopening the database", async () => {
+  const firstClient = openClient();
+  const firstRepository = createLibsqlContactRepository(firstClient);
+  const created = await firstRepository.create(ada);
+  await firstRepository.update(created.id, { nextFollowUpDate: "2026-12-01" });
+  firstClient.close();
+
+  const reopened = createLibsqlContactRepository(openClient());
+
+  await expect(reopened.list()).resolves.toEqual([{ ...created, nextFollowUpDate: "2026-12-01" }]);
+});

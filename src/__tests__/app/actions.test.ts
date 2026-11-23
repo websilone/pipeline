@@ -12,7 +12,8 @@ vi.mock("@/services", () => ({
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 
 const { revalidatePath } = await import("next/cache");
-const { moveContactAction } = await import("@/app/actions");
+const { addContactAction, moveContactAction, scheduleFollowUpAction } = await import("@/app/actions");
+const { EMPTY_FORM_STATE } = await import("@/components/contact-form-fields");
 
 let contacts: ReturnType<typeof createFakeRepository>["contacts"];
 
@@ -48,5 +49,37 @@ test("refuses a request without a stage", async () => {
   await moveContactAction(formData({ id: contacts[0].id }));
 
   expect(contacts[0].stage).toBe("todo");
+  expect(revalidatePath).not.toHaveBeenCalled();
+});
+
+test("adds a contact with its follow-up date", async () => {
+  await addContactAction(
+    EMPTY_FORM_STATE,
+    formData({ name: "Grace", company: "", email: "", nextFollowUpDate: "2026-12-01" }),
+  );
+
+  expect(contacts[1]).toMatchObject({ name: "Grace", nextFollowUpDate: "2026-12-01" });
+});
+
+test("returns the date error and the typed values when the date is invalid", async () => {
+  const values = { name: "Grace", company: "", email: "", nextFollowUpDate: "2026-02-30" };
+
+  const state = await addContactAction(EMPTY_FORM_STATE, formData(values));
+
+  expect(state).toEqual({ errors: { nextFollowUpDate: "La date n'est pas valide." }, values });
+  expect(contacts).toHaveLength(1);
+});
+
+test("plans a follow-up date from the card and refreshes the board", async () => {
+  await scheduleFollowUpAction(formData({ id: contacts[0].id, nextFollowUpDate: "2026-12-01" }));
+
+  expect(contacts[0].nextFollowUpDate).toBe("2026-12-01");
+  expect(revalidatePath).toHaveBeenCalledWith("/");
+});
+
+test("refuses an invalid follow-up date sent from the card", async () => {
+  await scheduleFollowUpAction(formData({ id: contacts[0].id, nextFollowUpDate: "nope" }));
+
+  expect(contacts[0].nextFollowUpDate).toBeNull();
   expect(revalidatePath).not.toHaveBeenCalled();
 });

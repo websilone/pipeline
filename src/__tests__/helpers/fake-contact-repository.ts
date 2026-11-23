@@ -1,5 +1,5 @@
 import { vi } from "vitest";
-import type { Contact, ContactRepository, NewContact } from "@/data/contact-repository";
+import type { Contact, ContactChanges, ContactRepository, NewContact } from "@/data/contact-repository";
 
 export function createFakeRepository() {
   const contacts: Contact[] = [];
@@ -9,11 +9,17 @@ export function createFakeRepository() {
       contacts.push(contact);
       return contact;
     }),
-    list: vi.fn(async () => [...contacts]),
+    list: vi.fn(async () => contacts.map((contact) => ({ ...contact }))),
     updateStage: vi.fn(async (id: string, stage: Contact["stage"]) => {
       const contact = contacts.find((candidate) => candidate.id === id);
       if (!contact) return null;
       contact.stage = stage;
+      return { ...contact };
+    }),
+    update: vi.fn(async (id: string, changes: ContactChanges) => {
+      const contact = contacts.find((candidate) => candidate.id === id);
+      if (!contact) return null;
+      Object.assign(contact, changes);
       return { ...contact };
     }),
   } satisfies ContactRepository;

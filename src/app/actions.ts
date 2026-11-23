@@ -9,6 +9,7 @@ export async function addContactAction(_previous: ContactFormState, formData: Fo
     name: String(formData.get("name") ?? ""),
     company: String(formData.get("company") ?? ""),
     email: String(formData.get("email") ?? ""),
+    nextFollowUpDate: String(formData.get("nextFollowUpDate") ?? ""),
   };
 
   const result = await contactService.addContact(values);
@@ -22,6 +23,14 @@ export async function moveContactAction(formData: FormData): Promise<void> {
   const result = await contactService.moveContact(
     String(formData.get("id") ?? ""),
     String(formData.get("stage") ?? ""),
+  );
+  if (result.ok) revalidatePath("/");
+}
+
+export async function scheduleFollowUpAction(formData: FormData): Promise<void> {
+  const result = await contactService.scheduleFollowUp(
+    String(formData.get("id") ?? ""),
+    String(formData.get("nextFollowUpDate") ?? ""),
   );
   if (result.ok) revalidatePath("/");
 }

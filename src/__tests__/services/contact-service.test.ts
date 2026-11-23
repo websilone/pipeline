@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { createContactService, isStage, STAGES, type ContactInput } from "@/services/contact-service";
+import { createContactService, isStage, STAGES, type ContactInput, type Stage } from "@/services/contact-service";
 import { createFakeRepository } from "../helpers/fake-contact-repository";
 
 describe("stages", () => {
@@ -79,13 +79,15 @@ describe("addContact", () => {
   });
 });
 
+const TODAY = "2026-11-23";
+
 describe("listContactsByStage", () => {
   test("groups contacts under each of the five stages", async () => {
     const { repository } = createFakeRepository();
     const service = createContactService(repository);
     await service.addContact({ name: "Ada" });
 
-    const byStage = await service.listContactsByStage();
+    const byStage = await service.listContactsByStage(TODAY);
 
     expect(Object.keys(byStage)).toEqual(STAGES.map((stage) => stage.id));
     expect(byStage.todo.map((contact) => contact.name)).toEqual(["Ada"]);
@@ -118,7 +120,7 @@ describe("moveContact", () => {
     const result = await service.moveContact(ada.id, "contacted");
 
     expect(result).toMatchObject({ ok: true, contact: { id: ada.id, stage: "contacted" } });
-    const byStage = await service.listContactsByStage();
+    const byStage = await service.listContactsByStage(TODAY);
     expect(byStage.contacted.map((contact) => contact.name)).toEqual(["Ada"]);
     expect(byStage.todo).toEqual([]);
   });
@@ -151,5 +153,121 @@ describe("moveContact", () => {
     const result = await service.moveContact("missing", "contacted");
 
     expect(result).toEqual({ ok: false, error: "Contact introuvable." });
+  });
+});
+
+describe("follow-up date on creation", () => {
+  test("stores the follow-up date given when adding a contact", async () => {
+    const { repository, contacts } = createFakeRepository();
+
+    const result = await createContactService(repository).addContact({ name: "Ada", nextFollowUpDate: "2026-12-01" });
+
+    expect(result).toMatchObject({ ok: true, contact: { nextFollowUpDate: "2026-12-01" } });
+    expect(contacts[0].nextFollowUpDate).toBe("2026-12-01");
+  });
+
+  test("stores no date when the field is left empty", async () => {
+    const { repository, contacts } = createFakeRepository();
+
+    await createContactService(repository).addContact({ name: "Ada", nextFollowUpDate: "  " });
+
+    expect(contacts[0].nextFollowUpDate).toBeNull();
+  });
+
+  test.each(["2026-02-30", "01/12/2026", "2026-1-5", "demain"])(
+    "refuses the invalid date %j without creating anything",
+    async (nextFollowUpDate) => {
+      const { repository, contacts } = createFakeRepository();
+
+      const result = await createContactService(repository).addContact({ name: "Ada", nextFollowUpDate });
+
+      expect(result).toEqual({ ok: false, errors: { nextFollowUpDate: "La date n'est pas valide." } });
+      expect(contacts).toHaveLength(0);
+    },
+  );
+});
+
+describe("scheduleFollowUp", () => {
+  async function serviceWithAda(nextFollowUpDate?: string) {
+    const { repository, contacts } = createFakeRepository();
+    const service = createContactService(repository);
+    await service.addContact({ name: "Ada", nextFollowUpDate });
+    return { service, repository, contacts };
+  }
+
+  test("gives a follow-up date to a contact", async () => {
+    const { service, contacts } = await serviceWithAda();
+
+    const result = await service.scheduleFollowUp(contacts[0].id, "2026-12-01");
+
+    expect(result).toMatchObject({ ok: true, contact: { nextFollowUpDate: "2026-12-01" } });
+    expect(contacts[0].nextFollowUpDate).toBe("2026-12-01");
+  });
+
+  test("replaces an existing follow-up date", async () => {
+    const { service, contacts } = await serviceWithAda("2026-12-01");
+
+    await service.scheduleFollowUp(contacts[0].id, "2027-01-15");
+
+    expect(contacts[0].nextFollowUpDate).toBe("2027-01-15");
+  });
+
+  test("clears the follow-up date when given an empty value", async () => {
+    const { service, contacts } = await serviceWithAda("2026-12-01");
+
+    await service.scheduleFollowUp(contacts[0].id, "");
+
+    expect(contacts[0].nextFollowUpDate).toBeNull();
+  });
+
+  test("refuses an invalid date and keeps the previous one", async () => {
+    const { service, repository, contacts } = await serviceWithAda("2026-12-01");
+
+    const result = await service.scheduleFollowUp(contacts[0].id, "2026-13-01");
+
+    expect(result).toEqual({ ok: false, error: "La date n'est pas valide." });
+    expect(repository.update).not.toHaveBeenCalled();
+    expect(contacts[0].nextFollowUpDate).toBe("2026-12-01");
+  });
+
+  test("refuses an unknown contact", async () => {
+    const { service } = await serviceWithAda();
+
+    await expect(service.scheduleFollowUp("missing", "2026-12-01")).resolves.toEqual({
+      ok: false,
+      error: "Contact introuvable.",
+    });
+  });
+});
+
+describe("overdue follow-ups", () => {
+  async function overdueFlags(nextFollowUpDate: string | undefined, stage: Stage = "contacted") {
+    const { repository, contacts } = createFakeRepository();
+    const service = createContactService(repository);
+    await service.addContact({ name: "Ada", nextFollowUpDate });
+    await service.moveContact(contacts[0].id, stage);
+
+    const byStage = await service.listContactsByStage(TODAY);
+    return byStage[stage][0].overdue;
+  }
+
+  test("flags a contact whose follow-up date is past", async () => {
+    await expect(overdueFlags("2026-11-22")).resolves.toBe(true);
+  });
+
+  test("does not flag a follow-up due today", async () => {
+    await expect(overdueFlags(TODAY)).resolves.toBe(false);
+  });
+
+  test("does not flag a future follow-up", async () => {
+    await expect(overdueFlags("2026-11-24")).resolves.toBe(false);
+  });
+
+  test("does not flag a contact without a follow-up date", async () => {
+    await expect(overdueFlags(undefined)).resolves.toBe(false);
+  });
+
+  test.each(["won", "lost"] as const)("does not flag a %s contact", async (stage) => {
+    await expect(overdueFlags("2026-11-01", stage)).resolves.toBe(false);
   });
 });
