@@ -121,6 +121,20 @@ test("update returns null for an unknown contact", async () => {
   await expect(repository.update("missing", { nextFollowUpDate: "2026-12-01" })).resolves.toBeNull();
 });
 
+test("update with no changes returns the contact unchanged", async () => {
+  const repository = createLibsqlContactRepository(openClient());
+  const created = await repository.create(ada);
+
+  await expect(repository.update(created.id, {})).resolves.toEqual(created);
+  await expect(repository.update(created.id, { notes: undefined })).resolves.toEqual(created);
+});
+
+test("update with no changes returns null for an unknown contact", async () => {
+  const repository = createLibsqlContactRepository(openClient());
+
+  await expect(repository.update("missing", {})).resolves.toBeNull();
+});
+
 test("a follow-up date survives closing and reopening the database", async () => {
   const firstClient = openClient();
   const firstRepository = createLibsqlContactRepository(firstClient);

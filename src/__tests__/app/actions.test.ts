@@ -73,16 +73,25 @@ test("returns the date error and the typed values when the date is invalid", asy
 });
 
 test("plans a follow-up date from the card and refreshes the board", async () => {
-  await scheduleFollowUpAction(formData({ id: contacts[0].id, nextFollowUpDate: "2026-12-01" }));
+  const state = await scheduleFollowUpAction({}, formData({ id: contacts[0].id, nextFollowUpDate: "2026-12-01" }));
 
+  expect(state).toEqual({});
   expect(contacts[0].nextFollowUpDate).toBe("2026-12-01");
   expect(revalidatePath).toHaveBeenCalledWith("/");
 });
 
-test("refuses an invalid follow-up date sent from the card", async () => {
-  await scheduleFollowUpAction(formData({ id: contacts[0].id, nextFollowUpDate: "nope" }));
+test("refuses an invalid follow-up date sent from the card and reports it", async () => {
+  const state = await scheduleFollowUpAction({}, formData({ id: contacts[0].id, nextFollowUpDate: "nope" }));
 
+  expect(state).toEqual({ error: "La date n'est pas valide." });
   expect(contacts[0].nextFollowUpDate).toBeNull();
+  expect(revalidatePath).not.toHaveBeenCalled();
+});
+
+test("reports an unknown contact when planning from the card", async () => {
+  const state = await scheduleFollowUpAction({}, formData({ id: "missing", nextFollowUpDate: "2026-12-01" }));
+
+  expect(state).toEqual({ error: "Contact introuvable." });
   expect(revalidatePath).not.toHaveBeenCalled();
 });
 

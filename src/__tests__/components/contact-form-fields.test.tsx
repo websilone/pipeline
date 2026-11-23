@@ -67,3 +67,18 @@ test("shows the date error on the follow-up field and keeps the value", () => {
   expect(fieldMarkup(html, "nextFollowUpDate")).toContain('value="2026-02-30"');
   expect(html).toMatch(/id="nextFollowUpDate-error"[^>]*>La date n(&#x27;|')est pas valide\./);
 });
+
+test("shows the company error and caps the text fields' length", () => {
+  const html = renderToStaticMarkup(
+    <ContactFormFields
+      state={{ errors: { company: "200 caractères maximum." }, values: EMPTY_FORM_STATE.values }}
+      pending={false}
+    />,
+  );
+
+  expect(fieldMarkup(html, "company")).toContain('aria-invalid="true"');
+  expect(html).toMatch(/id="company-error"[^>]*>200 caractères maximum\./);
+  expect(fieldMarkup(html, "name")).toContain('maxLength="200"');
+  expect(fieldMarkup(html, "company")).toContain('maxLength="200"');
+  expect(fieldMarkup(html, "email")).toContain('maxLength="254"');
+});

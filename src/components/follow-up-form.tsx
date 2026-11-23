@@ -1,7 +1,9 @@
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+"use client";
 
-export type ScheduleFollowUpAction = (formData: FormData) => Promise<void>;
+import { useActionState } from "react";
+import { FollowUpFields, type FollowUpState } from "@/components/follow-up-fields";
+
+export type ScheduleFollowUpAction = (previous: FollowUpState, formData: FormData) => Promise<FollowUpState>;
 
 type FollowUpFormProps = {
   contactId: string;
@@ -11,19 +13,11 @@ type FollowUpFormProps = {
 };
 
 export function FollowUpForm({ contactId, contactName, date, action }: FollowUpFormProps) {
+  const [state, formAction, pending] = useActionState(action, {});
+
   return (
-    <form action={action} className="flex items-center gap-2">
-      <input type="hidden" name="id" value={contactId} />
-      <Input
-        type="date"
-        name="nextFollowUpDate"
-        defaultValue={date ?? ""}
-        aria-label={`Prochaine relance de ${contactName}`}
-        className="h-7"
-      />
-      <Button type="submit" size="sm" variant="outline">
-        Planifier
-      </Button>
+    <form action={formAction} className="flex flex-col gap-1">
+      <FollowUpFields contactId={contactId} contactName={contactName} date={date} state={state} pending={pending} />
     </form>
   );
 }

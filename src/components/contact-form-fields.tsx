@@ -1,6 +1,6 @@
 import { FormField } from "@/components/form-field";
 import { Button } from "@/components/ui/button";
-import type { ContactErrors } from "@/services/contact-service";
+import { MAX_LENGTHS, type ContactErrors } from "@/services/contact-service";
 
 export type ContactFormValues = { name: string; company: string; email: string; nextFollowUpDate: string };
 
@@ -19,9 +19,22 @@ export function ContactFormFields({ state, pending }: { state: ContactFormState;
 
   return (
     <>
-      <FormField name="name" label="Nom" defaultValue={values.name} error={errors.name} />
-      <FormField name="company" label="Entreprise" defaultValue={values.company} />
-      <FormField name="email" label="Email" type="email" defaultValue={values.email} error={errors.email} />
+      <FormField name="name" label="Nom" defaultValue={values.name} error={errors.name} maxLength={MAX_LENGTHS.name} />
+      <FormField
+        name="company"
+        label="Entreprise"
+        defaultValue={values.company}
+        error={errors.company}
+        maxLength={MAX_LENGTHS.company}
+      />
+      <FormField
+        name="email"
+        label="Email"
+        type="email"
+        defaultValue={values.email}
+        error={errors.email}
+        maxLength={MAX_LENGTHS.email}
+      />
       <FormField
         name="nextFollowUpDate"
         label="Prochaine relance"

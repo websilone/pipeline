@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { EMPTY_FORM_STATE, type ContactFormState } from "@/components/contact-form-fields";
 import type { EditContactState } from "@/components/edit-contact-fields";
+import type { FollowUpState } from "@/components/follow-up-fields";
 import { contactService } from "@/services";
 
 export async function addContactAction(_previous: ContactFormState, formData: FormData): Promise<ContactFormState> {
@@ -28,12 +29,15 @@ export async function moveContactAction(formData: FormData): Promise<void> {
   if (result.ok) revalidatePath("/");
 }
 
-export async function scheduleFollowUpAction(formData: FormData): Promise<void> {
+export async function scheduleFollowUpAction(_previous: FollowUpState, formData: FormData): Promise<FollowUpState> {
   const result = await contactService.scheduleFollowUp(
     String(formData.get("id") ?? ""),
     String(formData.get("nextFollowUpDate") ?? ""),
   );
-  if (result.ok) revalidatePath("/");
+  if (!result.ok) return { error: result.error };
+
+  revalidatePath("/");
+  return {};
 }
 
 export async function updateContactAction(_previous: EditContactState, formData: FormData): Promise<EditContactState> {
