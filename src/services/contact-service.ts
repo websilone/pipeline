@@ -43,9 +43,20 @@ function parseDate(raw: string): IsoDate | null | undefined {
   return isRealDay ? value : undefined;
 }
 
+function isOpen(contact: Contact): boolean {
+  return !CLOSED_STAGES.includes(contact.stage);
+}
+
 function isOverdue(contact: Contact, today: IsoDate): boolean {
-  if (CLOSED_STAGES.includes(contact.stage) || contact.nextFollowUpDate === null) return false;
-  return contact.nextFollowUpDate < today;
+  return isOpen(contact) && contact.nextFollowUpDate !== null && contact.nextFollowUpDate < today;
+}
+
+function isDue(contact: Contact, today: IsoDate): boolean {
+  return isOpen(contact) && contact.nextFollowUpDate !== null && contact.nextFollowUpDate <= today;
+}
+
+function toBoardContact(contact: Contact, today: IsoDate): BoardContact {
+  return { ...contact, overdue: isOverdue(contact, today) };
 }
 
 function validate(name: string, email: string, nextFollowUpDate: IsoDate | null | undefined): ContactErrors {
@@ -79,10 +90,18 @@ export function createContactService(repository: ContactRepository) {
     },
 
     async listContactsByStage(today: IsoDate): Promise<Record<Stage, BoardContact[]>> {
-      const contacts = (await repository.list()).map((contact) => ({ ...contact, overdue: isOverdue(contact, today) }));
+      const contacts = (await repository.list()).map((contact) => toBoardContact(contact, today));
       return Object.fromEntries(
         STAGES.map(({ id }) => [id, contacts.filter((contact) => contact.stage === id)]),
       ) as Record<Stage, BoardContact[]>;
+    },
+
+    /** Open contacts whose follow-up is today or past, oldest follow-up first. */
+    async listFollowUpsDue(today: IsoDate): Promise<BoardContact[]> {
+      return (await repository.list())
+        .filter((contact) => isDue(contact, today))
+        .sort((a, b) => (a.nextFollowUpDate ?? "").localeCompare(b.nextFollowUpDate ?? ""))
+        .map((contact) => toBoardContact(contact, today));
     },
 
     async moveContact(id: string, stage: string): Promise<UpdateResult> {
